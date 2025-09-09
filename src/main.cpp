@@ -1,20 +1,12 @@
 #include <iostream>
-#include <cmath>
+#include <random>
+#include <vector>
 
 int main() {
-    // Call option payoff
-    double spot_price { 100 };
-    double strike_price { 105 };
-    double time_to_expiry { 1 };
-    double final_price { 110 };
-    double payoff { 0 };
+    std::random_device rd;
+    std::mt19937 generator(rd());
 
-    if (final_price > strike_price) {
-        payoff = final_price - strike_price;
-    }
-
-    std::cout << "Option Payoff: $" << payoff << "\n";
+    std::normal_distribution<double> distribution( 0.0, 1.0);
 
     return 0;
-
 }
