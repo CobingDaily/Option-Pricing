@@ -6,16 +6,19 @@ set(CMAKE_CXX_STANDARD_REQUIRED, ON)
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
-add_library(option_lib
+add_library(pricer_lib
         src/option.cpp
+        src/monte_carlo.cpp
 )
 
 add_executable(pricer
         src/main.cpp
 )
 
-target_link_libraries(pricer option_lib)
+target_link_libraries(pricer pricer_lib)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
-    target_compile_options(pricer PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(
+            pricer PRIVATE -Wall -Wextra -Wpedantic
+    )
 endif()
