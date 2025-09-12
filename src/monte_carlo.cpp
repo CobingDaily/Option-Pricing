@@ -22,10 +22,10 @@ PricingResult MonteCarloEngine::price(
         throw std::invalid_argument("Number of paths must be positive");
     }
     if (spot <= 0) {
-        throw new std::invalid_argument("Spot must be positive");
+        throw std::invalid_argument("Spot must be positive");
     }
     if (volatility <= 0) {
-        throw new std::invalid_argument("Volatility must be positive");
+        throw std::invalid_argument("Volatility must be positive");
     }
 
     std::vector<double> payoffs;
