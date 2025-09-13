@@ -14,6 +14,7 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 add_library(pricer_lib
         src/option.cpp
         src/monte_carlo.cpp
+        src/black_scholes.cpp
 )
 
 add_executable(pricer

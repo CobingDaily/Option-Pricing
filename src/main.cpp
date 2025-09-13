@@ -3,6 +3,8 @@
 #include <iostream>
 #include <iomanip>
 
+#include "black_scholes.h"
+
 void printResult(const PricingResult &result) {
     std::cout << "  Price: $" << std::fixed << std::setprecision(4) << result.price << "\n";
     std::cout << "  Standard Error: " << std::scientific << std::setprecision(2) << result.standard_error << "\n";
@@ -22,7 +24,7 @@ int main() {
 
     const MonteCarloEngine engine{42};
 
-    std::cout << "Monte-Carlo Convergence\n\n";
+    std::cout << "Monte-Carlo Convergence\n";
 
     for (const int paths: {1000, 10000, 100000, 1000000}) {
         try {
@@ -34,6 +36,10 @@ int main() {
             std::cerr << "Error: " << e.what() << "\n";
         }
     }
+
+    std::cout << "Black-Scholes Price\n";
+    const double bs_price = BlackScholes::price(call, spot, rate, volatility);
+    std::cout << "  Price: $" << std::fixed << std::setprecision(4) << bs_price << "\n";
 
     return 0;
 }

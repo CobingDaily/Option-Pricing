@@ -3,7 +3,6 @@
 
 #include "option.h"
 #include <random>
-#include <vector>
 
 struct PricingResult {
     double price;
