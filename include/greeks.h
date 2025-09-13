@@ -1,12 +1,8 @@
 #ifndef OPTION_PRICING_GREEKS_H
 #define OPTION_PRICING_GREEKS_H
 
-#include <string>
 #include <optional>
 
-/**
- *
- */
 struct Greeks {
     std::optional<double> delta;
     std::optional<double> gamma;

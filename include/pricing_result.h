@@ -31,7 +31,7 @@ struct PricingResult {
                   const int paths,
                   const Greeks &g,
                   const std::string &method = "Simulation")
-        : price{p}, standard_error{std_err}, paths_used{paths}, method_name{method} {
+        : price{p}, standard_error{std_err}, paths_used{paths}, greeks{g} ,method_name{method} {
     }
 
     [[nodiscard]] std::pair<double, double> getConfidenceInterval(const double confidence_interval) const {

@@ -16,6 +16,7 @@ add_library(pricer_lib
         src/monte_carlo.cpp
         src/black_scholes.cpp
         src/financial_math.cpp
+        src/discrete_greeks.cpp
 )
 
 add_executable(pricer

@@ -9,7 +9,7 @@ struct SimulationParameters {
     int num_paths;
     unsigned int random_seed;
 
-    SimulationParameters(int paths = 100000, unsigned int seed = 42)
+    explicit SimulationParameters(const int paths = 100000, const unsigned int seed = 42)
         : num_paths{paths}, random_seed{seed} {
         validate();
     }
