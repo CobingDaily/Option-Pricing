@@ -2,32 +2,40 @@
 #define OPTION_PRICING_MONTE_CARLO_H
 
 #include "option.h"
+#include "pricing_engine.h"
 #include <random>
 
-struct PricingResult {
-    double price;
-    double standard_error;
-    int paths_used;
+struct SimulationParameters {
+    int num_paths;
+    unsigned int random_seed;
 
-    PricingResult() : price{0}, standard_error{0}, paths_used{0} {}
+    SimulationParameters(int paths = 100000, unsigned int seed = 42)
+        : num_paths{paths}, random_seed{seed} {
+        validate();
+    }
+
+    void validate() const {
+        if (num_paths <= 0) throw std::invalid_argument("Number of paths must be positive");
+    }
 };
 
-class MonteCarloEngine {
+class MonteCarloEngine : public PricingEngine {
 private:
+    SimulationParameters simulation_parameters_;
     mutable std::mt19937 generator_;
     mutable std::normal_distribution<double> distribution_;
 
-    double simulatePath(double S0, double r, double sigma, double T) const;
+    double simulatePath(const MarketParameters& market, double expiry) const;
+
 public:
-    explicit MonteCarloEngine(unsigned int seed = 42);
+    explicit MonteCarloEngine(const SimulationParameters& parameters = SimulationParameters{});
 
     PricingResult price(
         const Option& option,
-        double spot,
-        double rate,
-        double volatility,
-        int num_paths
-    ) const;
+        const MarketParameters& market_parameters
+    ) const override;
+
+    std::string getName() const override;
 };
 
 #endif //OPTION_PRICING_MONTE_CARLO_H

@@ -5,41 +5,55 @@
 
 #include "black_scholes.h"
 
-void printResult(const PricingResult &result) {
+void printResult(const PricingResult& result) {
+    std::cout << "  Method: " << result.method_name << "\n";
     std::cout << "  Price: $" << std::fixed << std::setprecision(4) << result.price << "\n";
-    std::cout << "  Standard Error: " << std::scientific << std::setprecision(2) << result.standard_error << "\n";
-    std::cout << "  95% CI: "
-            << std::fixed << std::setprecision(4)
-            << result.price - 1.96 * result.standard_error << ", "
-            << result.price + 1.96 * result.standard_error << "]\n\n";
+
+    if (result.hasUncertainty()) {
+        std::cout << "  Standard Error: "
+                << std::scientific << std::setprecision(2)
+                << result.standard_error.value() << "\n";
+
+        auto [lower, upper] = result.getConfidenceInterval();
+        std::cout << "  95% CI: ["
+                << std::fixed << std::setprecision(4)
+                << lower << ", " << upper << "]\n";
+
+        if (result.paths_used.has_value()) {
+            std::cout << "  Paths Used: " << result.paths_used.value() << "\n";
+        }
+    }
+    std::cout << "\n";
 }
 
 int main() {
-    const Option call{105, Option::Type::CALL, 1};
+    try {
+        const Option call{105, Option::Type::CALL, 1};
+        const MarketParameters market{110, 0.05, 0.2};
 
+        std::cout << "Option Pricing Comparison\n";
 
-    constexpr double spot{110};
-    constexpr double rate{0.05};
-    constexpr double volatility{0.2};
+        std::cout << "Analytical Pricing:\n";
+        const BlackScholesEngine bs_engine;
+        const auto bs_result = bs_engine.price(call, market);
+        printResult(bs_result);
 
-    const MonteCarloEngine engine{42};
+        std::cout << "Monte Carlo Convergence:\n";
+        for (const int paths : {1000, 10000, 100000, 1000000}) {
+            SimulationParameters simulation_parameters{paths, 42};
+            const MonteCarloEngine mc_engine{simulation_parameters};
 
-    std::cout << "Monte-Carlo Convergence\n";
+            const auto mc_result = mc_engine.price(call, market);
+            printResult(mc_result);
 
-    for (const int paths: {1000, 10000, 100000, 1000000}) {
-        try {
-            PricingResult result = engine.price(call, spot, rate, volatility, paths);
-            std::cout << "Result with " << paths << " paths:\n";
-            printResult(result);
+            const double error = std::abs(bs_result.price - mc_result.price);
+            std::cout << "  Error vs Black-Scholes: $" << std::fixed << std::setprecision(4) << error << "\n\n";
         }
-        catch (const std::exception& e) {
-            std::cerr << "Error: " << e.what() << "\n";
-        }
+
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << "\n";
+        return 1;
     }
-
-    std::cout << "Black-Scholes Price\n";
-    const double bs_price = BlackScholes::price(call, spot, rate, volatility);
-    std::cout << "  Price: $" << std::fixed << std::setprecision(4) << bs_price << "\n";
 
     return 0;
 }

@@ -2,17 +2,16 @@
 #define OPTION_PRICING_BLACK_SCHOLES_H
 
 #include "option.h"
+#include "pricing_engine.h"
 
-class BlackScholes {
-private:
-    static double normalCDF(double x);
+class BlackScholesEngine : public PricingEngine {
 public:
-    static double price(
+    PricingResult price(
         const Option& option,
-        double spot,
-        double rate,
-        double volatility
-    ) ;
+        const MarketParameters& market_parameters
+    ) const override;
+
+    std::string getName() const override;
 };
 
 #endif //OPTION_PRICING_BLACK_SCHOLES_H
