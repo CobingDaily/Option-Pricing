@@ -5,13 +5,21 @@
 #include "pricing_engine.h"
 
 class BlackScholesEngine : public PricingEngine {
+private:
+    static Greeks calculateAnalyticalGreeks(
+        const Option &option,
+        const MarketParameters &market_parameters,
+        double d1,
+        double d2
+    ) ;
+
 public:
-    PricingResult price(
-        const Option& option,
-        const MarketParameters& market_parameters
+    [[nodiscard]] PricingResult price(
+        const Option &option,
+        const MarketParameters &market_parameters
     ) const override;
 
-    std::string getName() const override;
+    [[nodiscard]] std::string getName() const override;
 };
 
 #endif //OPTION_PRICING_BLACK_SCHOLES_H

@@ -5,18 +5,34 @@
 #include <string>
 
 #include "financial_math.h"
+#include "greeks.h"
 
 struct PricingResult {
     double price;
     std::optional<double> standard_error;
     std::optional<int> paths_used;
+    Greeks greeks;
     std::string method_name;
 
-    explicit PricingResult(const double p, const std::string& method = "Analytical")
-        : price{p}, method_name{method} { }
+    explicit PricingResult(const double p, const std::string &method = "Analytical")
+        : price{p}, method_name{method} {
+    }
 
-    PricingResult(const double p, const double std_err, const int paths, const std::string& method = "Simulation")
-        : price{p}, standard_error{std_err}, paths_used{paths}, method_name{method} { }
+    PricingResult(const double p, const Greeks &g, const std::string &method = "Analytical")
+        : price{p}, greeks{g}, method_name{method} {
+    }
+
+    PricingResult(const double p, const double std_err, const int paths, const std::string &method = "Simulation")
+        : price{p}, standard_error{std_err}, paths_used{paths}, method_name{method} {
+    }
+
+    PricingResult(const double p,
+                  const double std_err,
+                  const int paths,
+                  const Greeks &g,
+                  const std::string &method = "Simulation")
+        : price{p}, standard_error{std_err}, paths_used{paths}, method_name{method} {
+    }
 
     [[nodiscard]] std::pair<double, double> getConfidenceInterval(const double confidence_interval) const {
         if (!standard_error.has_value()) {
