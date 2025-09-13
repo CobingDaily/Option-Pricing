@@ -14,10 +14,13 @@ void printResult(const PricingResult& result) {
                 << std::scientific << std::setprecision(2)
                 << result.standard_error.value() << "\n";
 
-        auto [lower, upper] = result.getConfidenceInterval();
-        std::cout << "  95% CI: ["
-                << std::fixed << std::setprecision(4)
-                << lower << ", " << upper << "]\n";
+        for (const double conf_level : {0.90, 0.95, 0.99, 0.999}) {
+            auto [lower, upper] = result.getConfidenceInterval(conf_level);
+
+            std::cout << "  " << std::fixed << std::setprecision(1) << (conf_level * 100)
+                      << "% CI: [" << std::setprecision(4) << lower << ", " << upper
+                      << "] (width: " << std::setprecision(4) << (upper - lower) << ")\n";
+        }
 
         if (result.paths_used.has_value()) {
             std::cout << "  Paths Used: " << result.paths_used.value() << "\n";
@@ -47,7 +50,7 @@ int main() {
             printResult(mc_result);
 
             const double error = std::abs(bs_result.price - mc_result.price);
-            std::cout << "  Error vs Black-Scholes: $" << std::fixed << std::setprecision(4) << error << "\n\n";
+            std::cout << "    Error vs Black-Scholes: $" << std::fixed << std::setprecision(4) << error << "\n\n";
         }
 
     } catch (const std::exception& e) {

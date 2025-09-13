@@ -4,6 +4,8 @@
 #include <optional>
 #include <string>
 
+#include "financial_math.h"
+
 struct PricingResult {
     double price;
     std::optional<double> standard_error;
@@ -16,18 +18,17 @@ struct PricingResult {
     PricingResult(const double p, const double std_err, const int paths, const std::string& method = "Simulation")
         : price{p}, standard_error{std_err}, paths_used{paths}, method_name{method} { }
 
-    std::pair<double, double> getConfidenceInterval(const double confidence_interval = 0.95) const {
+    [[nodiscard]] std::pair<double, double> getConfidenceInterval(const double confidence_interval) const {
         if (!standard_error.has_value()) {
             return {price, price};
         }
 
-        // either 95 or 99 CI
-        const double z_score = (confidence_interval == 0.95) ? 1.96 : 2.576;
+        const double z_score = FinancialMath::getZScore(confidence_interval);
         const double margin = standard_error.value() * z_score;
         return {price - margin, price + margin};
     }
 
-    bool hasUncertainty() const {
+    [[nodiscard]] bool hasUncertainty() const {
         return standard_error.has_value();
     }
 };

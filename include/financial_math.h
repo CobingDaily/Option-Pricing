@@ -42,6 +42,10 @@ public:
     static double discountToPresent(const double future_value, const double rate, const double time) {
         return future_value * std::exp(-rate * time);
     }
+
+    // Inverse CDF Approximation
+    static double normalQuantile(double p);
+    static double getZScore(double confidence_level);
 };
 
 #endif //OPTION_PRICING_FINANCIAL_MATH_H

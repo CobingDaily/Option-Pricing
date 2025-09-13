@@ -15,6 +15,7 @@ add_library(pricer_lib
         src/option.cpp
         src/monte_carlo.cpp
         src/black_scholes.cpp
+        src/financial_math.cpp
 )
 
 add_executable(pricer
