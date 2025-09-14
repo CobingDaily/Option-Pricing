@@ -1,5 +1,8 @@
 # C++17 Option-Pricing + Greek Calculation with Black-Scholes and Monte-Carlo
 
+### Current Optimal Performance of Black-Scholes
+- 26 nanoseconds (Pricing + Greeks)
+
 ## Installation
 
 ### Prerequisites
