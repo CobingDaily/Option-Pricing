@@ -1,5 +1,8 @@
 #include <iostream>
 #include <iomanip>
+#include <sstream>
+#include <vector>
+#include <string>
 #include "benchmark.h"
 #include "option.h"
 #include "market_parameters.h"
@@ -7,210 +10,383 @@
 #include "monte_carlo.h"
 #include "discrete_greeks.h"
 
+namespace BenchmarkConfig {
+    // Test parameters
+    constexpr double SPOT_PRICE{100.0};
+    constexpr double STRIKE_PRICE{105.0};
+    constexpr double RISK_FREE_RATE{0.05};
+    constexpr double VOLATILITY{0.20};
+    constexpr double TIME_TO_EXPIRY{1.0};
+    constexpr unsigned int RANDOM_SEED{42};
+
+    // Benchmark iterations
+    constexpr int BS_ITERATIONS{1000};
+    constexpr int MC_ITERATIONS{10};
+    constexpr int GREEKS_ITERATIONS{5};
+
+    // Monte Carlo path configurations
+    const std::vector CONVERGENCE_PATHS = {1000, 5000, 10000, 50000, 100000, 500000};
+    const std::vector PERFORMANCE_PATHS = {1000, 10000, 100000};
+    const std::vector GREEKS_PATHS = {10000, 50000, 100000};
+    const std::vector ACCURACY_PATHS = {10000, 50000, 100000, 500000};
+
+    // Finite difference epsilon
+    constexpr double FD_EPSILON{0.01};
+
+    // Output formatting
+    constexpr int SEPARATOR_WIDTH{80};
+    constexpr int PRICE_PRECISION{4};
+    constexpr int GREEKS_PRECISION{6};
+    constexpr int PERCENT_PRECISION{2};
+}
+
+void printSectionHeader(const std::string &title) {
+    std::cout << "\n" << std::string(BenchmarkConfig::SEPARATOR_WIDTH, '=') << "\n";
+    std::cout << " " << title << "\n";
+    std::cout << std::string(BenchmarkConfig::SEPARATOR_WIDTH, '=') << "\n\n";
+}
+
+void printSubsectionHeader(const std::string &title) {
+    std::cout << "\n" << title << "\n";
+    std::cout << std::string(BenchmarkConfig::SEPARATOR_WIDTH, '-') << "\n";
+}
+
+void printTableSeparator() {
+    std::cout << std::string(BenchmarkConfig::SEPARATOR_WIDTH, '-') << "\n";
+}
+
+std::string formatMicroseconds(const double microseconds) {
+    if (microseconds < 1) {
+        return std::to_string(static_cast<int>(microseconds * 1000)) + " ns";
+    }
+    if (microseconds < 1000) {
+        return std::to_string(static_cast<int>(microseconds)) + " μs";
+    }
+    if (microseconds < 1000000) {
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(2) << (microseconds / 1000) << " ms";
+        return oss.str();
+    }
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(2) << (microseconds / 1000000) << " s";
+    return oss.str();
+}
+
+std::string formatNumber(const double value, const int precision = 2) {
+    std::ostringstream oss;
+    if (std::abs(value) < 1e-3 || std::abs(value) > 1e6) {
+        oss << std::scientific << std::setprecision(precision) << value;
+    } else {
+        oss << std::fixed << std::setprecision(precision) << value;
+    }
+    return oss.str();
+}
+
+Option createTestOption() {
+    return Option{
+        BenchmarkConfig::STRIKE_PRICE,
+        Option::Type::CALL,
+        BenchmarkConfig::TIME_TO_EXPIRY
+    };
+}
+
+MarketParameters createTestMarket() {
+    return MarketParameters{
+        BenchmarkConfig::SPOT_PRICE,
+        BenchmarkConfig::RISK_FREE_RATE,
+        BenchmarkConfig::VOLATILITY
+    };
+}
+
+
 void runConvergenceBenchmark() {
-    std::cout << "\n== Convergence Benchmark == \n\n";
+    printSectionHeader("CONVERGENCE BENCHMARK");
 
-    const Option call{105, Option::Type::CALL, 1.0};
-    const MarketParameters market{100, 0.05, 0.2};
+    const auto call = createTestOption();
+    const auto market = createTestMarket();
 
-    // Exact analytical price
     const BlackScholesEngine bs_engine;
     const auto bs_result = bs_engine.price(call, market);
     const double true_price = bs_result.price;
 
-    std::cout << "Black-Scholes Price: $"
-            << std::fixed << std::setprecision(4)
+    std::cout << "Reference Price (Black-Scholes): $"
+            << std::fixed << std::setprecision(BenchmarkConfig::PRICE_PRECISION)
             << true_price << "\n\n";
 
-    std::cout << std::setw(10) << "Paths"
-            << std::setw(15) << "Price"
-            << std::setw(15) << "Error"
-            << std::setw(15) << "Rel Error %"
-            << std::setw(15) << "Time (ms)\n";
+    std::cout << std::left
+            << std::setw(12) << "Paths"
+            << std::setw(12) << "Price"
+            << std::setw(12) << "Abs Error"
+            << std::setw(12) << "Rel Error"
+            << std::setw(12) << "Std Error"
+            << std::setw(15) << "Time"
+            << "\n";
 
-    std::cout << std::string(70, '-') << "\n";
+    printTableSeparator();
 
     Benchmark benchmark;
 
-    for (const int paths: {1000, 5000, 10000, 50000, 100000, 500000}) {
-        SimulationParameters parameters{paths, 42};
-        MonteCarloEngine mc_engine{parameters};
+    for (const int paths: BenchmarkConfig::CONVERGENCE_PATHS) {
+        SimulationParameters params{paths, BenchmarkConfig::RANDOM_SEED};
+        MonteCarloEngine mc_engine{params};
 
-        const auto result = benchmark.run(
-            "MC " + std::to_string(paths),
+        const auto bench_result = benchmark.run(
+            "MC_" + std::to_string(paths),
             [&]() { return mc_engine.price(call, market).price; },
             1
         );
 
-        const double error = std::abs(result.price - true_price);
+        const auto pricing_result = mc_engine.price(call, market);
+
+        const double error = std::abs(bench_result.price - true_price);
         const double rel_error = (error / true_price) * 100;
 
-        std::cout << std::setw(10) << paths
-                << std::setw(15) << result.price
-                << std::setw(15) << error
-                << std::setw(15) << rel_error
-                << std::setw(15) << result.time_ms << "\n";
+        std::cout << std::left
+                << std::setw(12) << paths
+                << std::setw(12) << formatNumber(bench_result.price, BenchmarkConfig::PRICE_PRECISION)
+                << std::setw(12) << formatNumber(error, BenchmarkConfig::PRICE_PRECISION)
+                << std::setw(12) << formatNumber(rel_error, BenchmarkConfig::PERCENT_PRECISION) + "%"
+                << std::setw(12) << formatNumber(pricing_result.standard_error.value(), 4)
+                << std::setw(15) << formatMicroseconds(bench_result.time_microseconds)
+                << "\n";
     }
 }
 
 void runPerformanceBenchmark() {
-    std::cout << "\n== Performance Benchmark == \n\n";
+    printSectionHeader("PERFORMANCE BENCHMARK");
 
-    const Option call{105, Option::Type::CALL, 1.0};
-    const MarketParameters market{100, 0.05, 0.2};
+    const auto call = createTestOption();
+    const auto market = createTestMarket();
 
     Benchmark benchmark;
 
-    // Benchmark Black-Scholes
-    {
+    // Black-Scholes Performance
+    printSubsectionHeader("Analytical Pricing (Black-Scholes)"); {
         const BlackScholesEngine engine;
-        constexpr int iterations{100};
-
         const auto result = benchmark.run(
             "Black-Scholes",
             [&]() { return engine.price(call, market).price; },
-            iterations
+            BenchmarkConfig::BS_ITERATIONS
         );
 
-        std::cout << "Black-Scholes:\n";
-        std::cout << "  Time per pricing: " << (result.time_ms / iterations) << " ms\n";
-        std::cout << "  Pricings per second: " << std::scientific
-                << result.iterations_per_second() << "\n\n";
+        std::cout << "  Iterations:          " << BenchmarkConfig::BS_ITERATIONS << "\n";
+        std::cout << "  Total time:          " << formatMicroseconds(result.time_microseconds) << "\n";
+        std::cout << "  Time per pricing:    " << formatMicroseconds(result.time_per_iteration_microseconds()) << "\n";
+        std::cout << "  Pricings per second: " << formatNumber(result.iterations_per_second(), 0) << "\n";
     }
 
-    // Benchmark Monte Carlo with different paths
-    for (const int paths: {1000, 10000, 100000}) {
-        SimulationParameters params{paths, 42};
-        MonteCarloEngine engine{params};
-        constexpr int iterations{10};
+    // Monte Carlo Performance
+    printSubsectionHeader("Monte Carlo Simulation");
 
-        auto result = benchmark.run(
-            "Monte Carlo " + std::to_string(paths),
+    std::cout << std::left
+            << std::setw(15) << "Paths"
+            << std::setw(20) << "Time/Pricing"
+            << std::setw(20) << "Paths/Second"
+            << std::setw(20) << "Relative Speed"
+            << "\n";
+    printTableSeparator();
+
+    double baseline_time = 0;
+
+    for (size_t i = 0; i < BenchmarkConfig::PERFORMANCE_PATHS.size(); ++i) {
+        const int paths = BenchmarkConfig::PERFORMANCE_PATHS[i];
+        SimulationParameters params{paths, BenchmarkConfig::RANDOM_SEED};
+        MonteCarloEngine engine{params};
+
+        const auto result = benchmark.run(
+            "MC_" + std::to_string(paths),
             [&]() { return engine.price(call, market).price; },
-            iterations
+            BenchmarkConfig::MC_ITERATIONS
         );
 
-        std::cout << "Monte Carlo (" << paths << " paths):\n";
-        std::cout << "  Time per pricing: " << (result.time_ms / 10) << " ms\n";
-        std::cout << "  Paths per second: " << std::scientific
-                << (paths * 10) / (result.time_ms / 1000.0) << "\n\n";
+        const double time_per_iter = result.time_per_iteration_microseconds();
+        const double paths_per_second = (paths * BenchmarkConfig::MC_ITERATIONS) /
+                                        (result.time_microseconds / 1000000.0);
+
+        if (i == 0) baseline_time = time_per_iter;
+        const double relative_speed = baseline_time / time_per_iter;
+
+        std::cout << std::left
+                << std::setw(15) << paths
+                << std::setw(20) << formatMicroseconds(time_per_iter)
+                << std::setw(20) << formatNumber(paths_per_second, 0)
+                << std::setw(20) << formatNumber(relative_speed, 2) + "x"
+                << "\n";
     }
 }
 
+void printGreeksRow(const std::string &label, const Greeks &greeks) {
+    std::cout << std::left << std::setw(20) << label;
+
+    auto printGreek = [](const std::optional<double> &value, const std::string &name) {
+        std::cout << "  " << name << ": ";
+        if (value.has_value()) {
+            std::cout << std::setw(10) << std::fixed
+                    << std::setprecision(BenchmarkConfig::GREEKS_PRECISION)
+                    << value.value();
+        } else {
+            std::cout << std::setw(10) << "N/A";
+        }
+    };
+
+    printGreek(greeks.delta, "Δ");
+    printGreek(greeks.gamma, "Γ");
+    printGreek(greeks.vega, "ν");
+    printGreek(greeks.theta, "Θ");
+    printGreek(greeks.rho, "ρ");
+    std::cout << "\n";
+}
+
 void runGreeksBenchmark() {
-    std::cout << "\n== Greeks Benchmark ==\n\n";
+    printSectionHeader("GREEKS BENCHMARK");
 
-    const Option call{105, Option::Type::CALL, 1.0};
-    const MarketParameters market{100, 0.05, 0.2};
+    const auto call = createTestOption();
+    const auto market = createTestMarket();
 
+    // Calculate analytical Greeks as reference
     const BlackScholesEngine bs_engine;
-    const auto [delta, gamma, vega, theta, rho] = bs_engine.price(call, market).greeks;
+    const auto bs_result = bs_engine.price(call, market);
 
-    std::cout << "Analytical Greeks (Black-Scholes):\n";
-    std::cout << "  Delta: " << std::fixed << std::setprecision(6) << delta.value() << "\n";
-    std::cout << "  Gamma: " << gamma.value() << "\n";
-    std::cout << "  Vega:  " << vega.value() << "\n";
-    std::cout << "  Theta: " << theta.value() << "\n";
-    std::cout << "  Rho:   " << rho.value() << "\n\n";
+    printSubsectionHeader("Reference Greeks (Black-Scholes Analytical)");
+    printGreeksRow("Analytical", bs_result.greeks);
 
-    // Performance comparison: Price vs Price+Greeks
-    std::cout << "Performance Comparison:\n";
-    std::cout << std::setw(25) << "Method"
-            << std::setw(15) << "Time (ms)"
-            << std::setw(15) << "Greeks Cost"
-            << std::setw(15) << "Overhead %\n";
-    std::cout << std::string(70, '-') << "\n";
+    // Performance comparison
+    printSubsectionHeader("Performance Impact of Greeks Calculation");
+
+    std::cout << std::left
+            << std::setw(25) << "Method"
+            << std::setw(15) << "Price Only"
+            << std::setw(15) << "With Greeks"
+            << std::setw(15) << "Overhead"
+            << std::setw(15) << "Factor"
+            << "\n";
+    printTableSeparator();
 
     Benchmark benchmark;
 
-    // Black-Scholes (greeks included)
+    // Black-Scholes (Greeks are essentially free)
     {
-        constexpr int iterations{100};
-
         const auto result = benchmark.run(
-            "BS Analytical",
+            "BS_Greeks",
             [&]() { return bs_engine.price(call, market).price; },
-            iterations
+            BenchmarkConfig::BS_ITERATIONS
         );
 
-        std::cout << std::setw(25) << "Black-Scholes"
-                << std::setw(15) << std::fixed << std::setprecision(4)
-                << (result.time_ms / iterations)
-                << std::setw(15) << "Included"
-                << std::setw(15) << "0.0%\n";
+        std::cout << std::left
+                << std::setw(25) << "Black-Scholes"
+                << std::setw(15) << formatMicroseconds(result.time_per_iteration_microseconds())
+                << std::setw(15) << formatMicroseconds(result.time_per_iteration_microseconds())
+                << std::setw(15) << "~0%"
+                << std::setw(15) << "1.0x"
+                << "\n";
     }
 
-    // Monte Carlo Greeks with different path counts
-    for (const int paths: {10000, 50000, 100000}) {
-        constexpr int iterations{5};
-
-        SimulationParameters params{paths, 42};
+    // Monte Carlo with finite differences
+    for (const int paths: BenchmarkConfig::GREEKS_PATHS) {
+        SimulationParameters params{paths, BenchmarkConfig::RANDOM_SEED};
         MonteCarloEngine mc_engine{params};
+        FiniteDifferenceGreeks greeks_calc{mc_engine, BenchmarkConfig::FD_EPSILON};
 
         // Price only
         const auto price_only = benchmark.run(
-            "MC Price " + std::to_string(paths),
+            "MC_Price_" + std::to_string(paths),
             [&]() { return mc_engine.price(call, market).price; },
-            iterations
+            BenchmarkConfig::GREEKS_ITERATIONS
         );
 
-        // Price + Greeks
-        FiniteDifferenceGreeks greeks_calc{mc_engine, 0.01};
+        // With Greeks (calculates all Greeks)
         const auto with_greeks = benchmark.run(
-            "MC Greeks " + std::to_string(paths),
-            [&]() { return greeks_calc.calculate(call, market).delta.value(); },
-            iterations
+            "MC_Greeks_" + std::to_string(paths),
+            [&]() {
+                auto g = greeks_calc.calculate(call, market);
+                return g.delta.value_or(0.0);
+            },
+            1
         );
 
-        const double price_time = price_only.time_ms / iterations;
-        const double greeks_time = with_greeks.time_ms / iterations;
-        const double overhead = ((greeks_time - price_time) / price_time) * 100;
+        const double price_time = price_only.time_per_iteration_microseconds();
+        const double greeks_time = with_greeks.time_microseconds;
+        const double overhead_percent = ((greeks_time - price_time) / price_time) * 100;
+        const double factor = greeks_time / price_time;
 
-        std::cout << std::setw(25) << ("MC (" + std::to_string(paths) + " paths)")
-                << std::setw(15) << std::fixed << std::setprecision(1) << price_time
-                << std::setw(15) << std::fixed << std::setprecision(1) << greeks_time
-                << std::setw(15) << std::fixed << std::setprecision(1) << overhead << "%\n";
+        std::cout << std::left
+                << std::setw(25) << ("Monte Carlo (" + std::to_string(paths) + ")")
+                << std::setw(15) << formatMicroseconds(price_time)
+                << std::setw(15) << formatMicroseconds(greeks_time)
+                << std::setw(15) << formatNumber(overhead_percent, 1) + "%"
+                << std::setw(15) << formatNumber(factor, 1) + "x"
+                << "\n";
     }
 
-    // Accuracy comparison: Analytical vs Numerical Greeks
-    std::cout << "\n\nAccuracy Comparison (Monte Carlo vs Analytical):\n";
-    std::cout << std::setw(10) << "Paths"
+    // Accuracy comparison
+    printSubsectionHeader("Greeks Accuracy (Finite Differences vs Analytical)");
+
+    std::cout << std::left
+            << std::setw(12) << "Paths"
             << std::setw(12) << "Delta Err"
             << std::setw(12) << "Gamma Err"
             << std::setw(12) << "Vega Err"
             << std::setw(12) << "Theta Err"
-            << std::setw(12) << "Rho Err\n";
-    std::cout << std::string(70, '-') << "\n";
+            << std::setw(12) << "Rho Err"
+            << "\n";
+    printTableSeparator();
 
-    for (const int paths: {10000, 50000, 100000, 5000000}) {
-        SimulationParameters params{paths, 42};
+    for (const int paths: BenchmarkConfig::ACCURACY_PATHS) {
+        SimulationParameters params{paths, BenchmarkConfig::RANDOM_SEED};
         MonteCarloEngine mc_engine{params};
-        FiniteDifferenceGreeks greeks_calc{mc_engine, 0.01};
+        FiniteDifferenceGreeks greeks_calc{mc_engine, BenchmarkConfig::FD_EPSILON};
 
         const auto [mc_delta, mc_gamma, mc_vega, mc_theta, mc_rho] = greeks_calc.calculate(call, market);
 
-        const double delta_err = std::abs(mc_delta.value() - delta.value());
-        const double gamma_err = std::abs(mc_gamma.value() - gamma.value());
-        const double vega_err = std::abs(mc_vega.value() - vega.value());
-        const double theta_err = std::abs(mc_theta.value() - theta.value());
-        const double rho_err = std::abs(mc_rho.value() - rho.value());
+        auto calcError = [](const std::optional<double> &mc, const std::optional<double> &bs) {
+            if (mc.has_value() && bs.has_value()) {
+                return std::abs(mc.value() - bs.value());
+            }
+            return 0.0;
+        };
 
-        std::cout << std::setw(10) << paths
-                << std::setw(12) << std::scientific << std::setprecision(2) << delta_err
-                << std::setw(12) << gamma_err
-                << std::setw(12) << vega_err
-                << std::setw(12) << theta_err
-                << std::setw(12) << rho_err << "\n";
+        std::cout << std::left
+                << std::setw(12) << paths
+                << std::setw(12) << formatNumber(calcError(mc_delta, bs_result.greeks.delta), 4)
+                << std::setw(12) << formatNumber(calcError(mc_gamma, bs_result.greeks.gamma), 4)
+                << std::setw(12) << formatNumber(calcError(mc_vega, bs_result.greeks.vega), 4)
+                << std::setw(12) << formatNumber(calcError(mc_theta, bs_result.greeks.theta), 4)
+                << std::setw(12) << formatNumber(calcError(mc_rho, bs_result.greeks.rho), 4)
+                << "\n";
     }
+}
+
+void printSummary() {
+    printSectionHeader("BENCHMARK SUMMARY");
+
+    std::cout << "Test Configuration:\n";
+    std::cout << "  Option Type:    European Call\n";
+    std::cout << std::setprecision(2);
+    std::cout << "  Spot Price:     $" << BenchmarkConfig::SPOT_PRICE << "\n";
+    std::cout << "  Strike Price:   $" << BenchmarkConfig::STRIKE_PRICE << "\n";
+    std::cout << "  Risk-Free Rate: " << (BenchmarkConfig::RISK_FREE_RATE * 100) << "%\n";
+    std::cout << "  Volatility:     " << (BenchmarkConfig::VOLATILITY * 100) << "%\n";
+    std::cout << "  Time to Expiry: " << BenchmarkConfig::TIME_TO_EXPIRY << " year(s)\n";
+    std::cout << "  Random Seed:    " << BenchmarkConfig::RANDOM_SEED << "\n";
 }
 
 int main() {
     try {
+        std::cout << std::fixed;
+
+        std::cout << "\n";
+        std::cout << "╔════════════════════════════════════════════════════════════════════════════╗\n";
+        std::cout << "║                      OPTION PRICING BENCHMARK SUITE                        ║\n";
+        std::cout << "║                    Monte Carlo vs Black-Scholes Analysis                   ║\n";
+        std::cout << "╚════════════════════════════════════════════════════════════════════════════╝\n";
+
         runConvergenceBenchmark();
         runPerformanceBenchmark();
         runGreeksBenchmark();
+
+        printSummary();
     } catch (const std::exception &e) {
-        std::cerr << "Error: " << e.what() << "\n";
+        std::cerr << "\nError: " << e.what() << "\n";
         return 1;
     }
 

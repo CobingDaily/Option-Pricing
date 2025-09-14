@@ -19,21 +19,29 @@ public:
         is_running_ = true;
     }
 
-    // returns elapsed millis
-    double elapsed() const {
+    // returns elapsed microseconds
+    [[nodiscard]] double elapsed() const {
         if (!is_running_) return 0.0;
 
         const auto end_time = Clock::now();
         const auto duration = std::chrono::duration_cast<std::chrono::microseconds>(
             end_time - start_time_
         );
-        return duration.count() / 1000.0;
+        return static_cast<double>(duration.count());
     }
 
     double stop() {
         const double elapsed_time = elapsed();
         is_running_ = false;
         return elapsed_time;
+    }
+
+    [[nodiscard]] double elapsedMilliseconds() const {
+        return elapsed() / 1000.0;
+    }
+
+    [[nodiscard]] double elapsedSeconds() const {
+        return elapsed() / 1000000.0;
     }
 };
 
