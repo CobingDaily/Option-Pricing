@@ -25,8 +25,18 @@ add_executable(pricer
 
 target_link_libraries(pricer pricer_lib)
 
+add_executable(benchmark
+        src/benchmark_suite.cpp
+)
+target_link_libraries(benchmark pricer_lib)
+
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
     target_compile_options(pricer PRIVATE
+            -Wall -Wextra -Wpedantic
+            $<$<CONFIG:Release>:-O3 -march=native -DNDEBUG>
+            $<$<CONFIG:Debug>:-g -O0 -DDEBUG>
+    )
+    target_compile_options(benchmark PRIVATE
             -Wall -Wextra -Wpedantic
             $<$<CONFIG:Release>:-O3 -march=native -DNDEBUG>
             $<$<CONFIG:Debug>:-g -O0 -DDEBUG>

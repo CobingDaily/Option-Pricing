@@ -16,8 +16,7 @@ double MonteCarloEngine::simulatePath(const MarketParameters &market, const doub
 
 
 MonteCarloEngine::MonteCarloEngine(const SimulationParameters &parameters)
-    : simulation_parameters_{parameters}, generator_{parameters.random_seed}, distribution_{0.0, 1.0} {
-}
+    : simulation_parameters_{parameters}, generator_{parameters.random_seed}, distribution_{0.0, 1.0} {}
 
 PricingResult MonteCarloEngine::price(
     const Option &option,
@@ -52,10 +51,10 @@ PricingResult MonteCarloEngine::price(
     const double present_price = FinancialMath::discountToPresent(mean, rate, time);
     const double present_error = FinancialMath::discountToPresent(std_error, rate, time);
 
-    const FiniteDifferenceGreeks greek_calculator{*this, 0.01};
-    const Greeks greeks = greek_calculator.calculate(option, market_parameters);
+    // const FiniteDifferenceGreeks greek_calculator{*this, 0.01};
+    // const Greeks greeks = greek_calculator.calculate(option, market_parameters);
 
-    return PricingResult{present_price, present_error, n, greeks, "Monte Carlo"};
+    return PricingResult{present_price, present_error, n, "Monte Carlo"};
 }
 
 std::string MonteCarloEngine::getName() const {
