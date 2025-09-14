@@ -56,8 +56,10 @@ const auto [d, g, v, t, r] = greeks_calculator.calculate(option, market).greeks;
 
 This project uses the following third-party algorithms:
 
+- **Black-Scholes Model:** Black & Scholes (1973), Merton (1973) - Nobel Prize Winners in Finance Theory
 - **Acklam's Normal Quantile Function**: Used for calculating confidence intervals
     - Author: Peter John Acklam
     - Source: [An algorithm for computing the inverse normal cumulative distribution function](https://stackedboxes.org/2017/05/01/acklams-normal-quantile-function/)
     - Original: https://web.archive.org/web/20151030215612/http://home.online.no/~pjacklam/notes/invnorm/
     - Accuracy: Relative error < 1.15e-9
+- **Monte Carlo Methods:** Geometric Brownian motion simulation using C++17 random number generators
