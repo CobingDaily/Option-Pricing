@@ -1,9 +1,35 @@
+## Installation
+
+### Prerequisites
+- C++17 compatible compiler (GCC 7, Clang 5)
+- CMake 4.0
+
+### Build
+```bash
+git clone https://github.com/CobingDaily/Option-Pricing.git
+cd Option-Pricing
+mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+make
+```
+### Usage
+```bash
+# Interactive demo
+./pricer
+
+# Command line pricing
+./pricer 100 105 0.05 0.2 1.0 call bs
+./pricer 100 105 0.05 0.2 1.0 put mc 50000
+
+# Run benchmarks
+./benchmark
+```
 ## Overview
 
 ### Option-Pricing + Greek Calculation with Black-Scholes and Monte-Carlo
 
 #### Usage Pattern
-```cpp
+```c++
 // Black-Scholes: Greeks included automatically
 const BlackScholesEngine bs_engine;
 const auto bs_result = bs_engine.price(option, market);  // Includes analytical Greeks
