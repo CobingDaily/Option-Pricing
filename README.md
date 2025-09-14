@@ -1,3 +1,5 @@
+# C++17 Option-Pricing + Greek Calculation with Black-Scholes and Monte-Carlo
+
 ## Installation
 
 ### Prerequisites
@@ -25,8 +27,6 @@ make
 ./benchmark
 ```
 ## Overview
-
-### Option-Pricing + Greek Calculation with Black-Scholes and Monte-Carlo
 
 #### Usage Pattern
 ```c++
