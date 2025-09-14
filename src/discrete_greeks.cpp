@@ -32,7 +32,7 @@ double FiniteDifferenceGreeks::calculateDelta(
 
     const double price_incr = engine_.price(option, market_up).price;
 
-    return (price_incr - base_price) / price_incr;
+    return (price_incr - base_price) / finite_incr;
 }
 
 double FiniteDifferenceGreeks::calculateGamma(

@@ -51,9 +51,6 @@ PricingResult MonteCarloEngine::price(
     const double present_price = FinancialMath::discountToPresent(mean, rate, time);
     const double present_error = FinancialMath::discountToPresent(std_error, rate, time);
 
-    // const FiniteDifferenceGreeks greek_calculator{*this, 0.01};
-    // const Greeks greeks = greek_calculator.calculate(option, market_parameters);
-
     return PricingResult{present_price, present_error, n, "Monte Carlo"};
 }
 
